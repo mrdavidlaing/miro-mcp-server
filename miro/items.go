@@ -88,8 +88,9 @@ func parseItemSummary(raw json.RawMessage, fullDetails bool) ItemSummary {
 		} `json:"position"`
 		ParentID string `json:"parentId"`
 		Data     struct {
-			Content string `json:"content"`
-			Title   string `json:"title"`
+			Content     string `json:"content"`
+			Title       string `json:"title"`
+			Description string `json:"description"`
 		} `json:"data"`
 		// Extended fields (only parsed when fullDetails=true)
 		Geometry *struct {
@@ -122,6 +123,9 @@ func parseItemSummary(raw json.RawMessage, fullDetails bool) ItemSummary {
 	content := base.Data.Content
 	if content == "" {
 		content = base.Data.Title
+	}
+	if content == "" {
+		content = base.Data.Description
 	}
 
 	item := ItemSummary{
@@ -205,9 +209,15 @@ func (c *Client) GetItem(ctx context.Context, args GetItemArgs) (GetItemResult, 
 			Height float64 `json:"height"`
 		} `json:"geometry"`
 		Data struct {
-			Content string `json:"content"`
-			Title   string `json:"title"`
-			Shape   string `json:"shape"`
+			Content     string `json:"content"`
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			DueDate     string `json:"dueDate"`
+			Shape       string `json:"shape"`
+			Assignee    *struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"assignee,omitempty"`
 		} `json:"data"`
 		Style struct {
 			FillColor string `json:"fillColor"`
@@ -228,15 +238,23 @@ func (c *Client) GetItem(ctx context.Context, args GetItemArgs) (GetItemResult, 
 	}
 
 	result := GetItemResult{
-		ID:         item.ID,
-		Type:       item.Type,
-		Content:    item.Data.Content,
-		Title:      item.Data.Title,
-		Shape:      item.Data.Shape,
-		Color:      item.Style.FillColor,
-		ParentID:   item.ParentID,
-		CreatedAt:  item.CreatedAt,
-		ModifiedAt: item.ModifiedAt,
+		ID:          item.ID,
+		Type:        item.Type,
+		Content:     item.Data.Content,
+		Title:       item.Data.Title,
+		Description: item.Data.Description,
+		DueDate:     item.Data.DueDate,
+		Shape:       item.Data.Shape,
+		Color:       item.Style.FillColor,
+		ParentID:    item.ParentID,
+		CreatedAt:   item.CreatedAt,
+		ModifiedAt:  item.ModifiedAt,
+	}
+	if item.Data.Assignee != nil {
+		result.Assignee = item.Data.Assignee.Name
+		if result.Assignee == "" {
+			result.Assignee = item.Data.Assignee.ID
+		}
 	}
 
 	if item.Position != nil {
@@ -853,63 +871,85 @@ func (c *Client) SearchBoard(ctx context.Context, args SearchBoardArgs) (SearchB
 		limit = args.Limit
 	}
 
-	// Fetch items from the board
-	params := url.Values{}
-	if args.Type != "" {
-		params.Set("type", args.Type)
-	}
-	params.Set("limit", strconv.Itoa(limit))
-
-	path := "/boards/" + args.BoardID + "/items"
-	if len(params) > 0 {
-		path += "?" + params.Encode()
-	}
-
-	respBody, err := c.request(ctx, http.MethodGet, path, nil)
-	if err != nil {
-		return SearchBoardResult{}, err
-	}
-
-	var resp struct {
-		Data []json.RawMessage `json:"data"`
-	}
-	if err := json.Unmarshal(respBody, &resp); err != nil {
-		return SearchBoardResult{}, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	// Search through items for matching content
+	// Search across paginated /items: cards and app_cards store text in data.title, data.description, etc.
 	queryLower := strings.ToLower(args.Query)
 	var matches []ItemMatch
+	cursor := ""
+	// Avoid unbounded work on huge boards: cap how many list pages we walk.
+	const maxSearchPages = 20
 
-	for _, raw := range resp.Data {
-		var item struct {
-			ID       string `json:"id"`
-			Type     string `json:"type"`
-			Position *struct {
-				X float64 `json:"x"`
-				Y float64 `json:"y"`
-			} `json:"position"`
-			Data struct {
-				Content string `json:"content"`
-				Title   string `json:"title"`
-			} `json:"data"`
+	for range maxSearchPages {
+		params := url.Values{}
+		if args.Type != "" {
+			params.Set("type", args.Type)
 		}
-		if err := json.Unmarshal(raw, &item); err != nil {
-			continue
+		params.Set("limit", strconv.Itoa(limit))
+		if cursor != "" {
+			params.Set("cursor", cursor)
 		}
 
-		// Check content and title for matches
-		content := item.Data.Content
-		if content == "" {
-			content = item.Data.Title
+		path := "/boards/" + args.BoardID + "/items?" + params.Encode()
+		respBody, err := c.request(ctx, http.MethodGet, path, nil)
+		if err != nil {
+			return SearchBoardResult{}, err
 		}
 
-		if content != "" && strings.Contains(strings.ToLower(content), queryLower) {
+		var resp struct {
+			Data   []json.RawMessage `json:"data"`
+			Cursor string            `json:"cursor,omitempty"`
+		}
+		if err := json.Unmarshal(respBody, &resp); err != nil {
+			return SearchBoardResult{}, fmt.Errorf("failed to parse response: %w", err)
+		}
+
+		for _, raw := range resp.Data {
+			var item struct {
+				ID       string `json:"id"`
+				Type     string `json:"type"`
+				Position *struct {
+					X float64 `json:"x"`
+					Y float64 `json:"y"`
+				} `json:"position"`
+				Data struct {
+					Content     string `json:"content"`
+					Title       string `json:"title"`
+					Description string `json:"description"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal(raw, &item); err != nil {
+				continue
+			}
+
+			hay := []string{
+				item.Data.Content,
+				item.Data.Title,
+				item.Data.Description,
+			}
+			var best string
+			matched := false
+			for _, s := range hay {
+				if s == "" {
+					continue
+				}
+				low := strings.ToLower(s)
+				if strings.Contains(low, queryLower) {
+					matched = true
+					if best == "" {
+						best = s
+					}
+				}
+			}
+			if !matched {
+				continue
+			}
+			if best == "" {
+				best = firstNonEmpty(hay...)
+			}
 			match := ItemMatch{
 				ID:      item.ID,
 				Type:    item.Type,
-				Content: content,
-				Snippet: createSnippet(content, args.Query, 50),
+				Content: best,
+				Snippet: createSnippet(best, args.Query, 50),
 			}
 			if item.Position != nil {
 				match.X = item.Position.X
@@ -917,6 +957,11 @@ func (c *Client) SearchBoard(ctx context.Context, args SearchBoardArgs) (SearchB
 			}
 			matches = append(matches, match)
 		}
+
+		if resp.Cursor == "" {
+			break
+		}
+		cursor = resp.Cursor
 	}
 
 	message := fmt.Sprintf("Found %d items matching '%s'", len(matches), args.Query)
@@ -1326,6 +1371,15 @@ func (c *Client) UpdateCard(ctx context.Context, args UpdateCardArgs) (UpdateCar
 		DueDate:     resp.Data.DueDate,
 		Message:     "Card updated successfully",
 	}, nil
+}
+
+func firstNonEmpty(s ...string) string {
+	for _, t := range s {
+		if t != "" {
+			return t
+		}
+	}
+	return ""
 }
 
 // createSnippet creates a text snippet around the matched query.

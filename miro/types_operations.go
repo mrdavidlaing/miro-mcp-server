@@ -391,7 +391,7 @@ type CreateStickyGridResult struct {
 // ListItemsArgs contains parameters for listing board items.
 type ListItemsArgs struct {
 	BoardID     string `json:"board_id" jsonschema:"Board ID"`
-	Type        string `json:"type,omitempty" jsonschema:"Filter by item type: sticky_note, shape, text, connector, frame"`
+	Type        string `json:"type,omitempty" jsonschema:"Filter by item type: sticky_note, shape, text, connector, frame, card, app_card"`
 	Limit       int    `json:"limit,omitempty" jsonschema:"Max items to return (default 50, max 100)"`
 	Cursor      string `json:"cursor,omitempty" jsonschema:"Pagination cursor"`
 	DetailLevel string `json:"detail_level,omitempty" jsonschema:"Response detail level: 'minimal' (default) returns basic fields, 'full' includes style, geometry, timestamps, and creator info"`
@@ -438,21 +438,24 @@ type GetItemArgs struct {
 
 // GetItemResult contains the full item details.
 type GetItemResult struct {
-	ID         string  `json:"id"`
-	Type       string  `json:"type"`
-	Content    string  `json:"content,omitempty"`
-	Title      string  `json:"title,omitempty"`
-	X          float64 `json:"x"`
-	Y          float64 `json:"y"`
-	Width      float64 `json:"width,omitempty"`
-	Height     float64 `json:"height,omitempty"`
-	Color      string  `json:"color,omitempty"`
-	Shape      string  `json:"shape,omitempty"`
-	ParentID   string  `json:"parent_id,omitempty"`
-	CreatedAt  string  `json:"created_at,omitempty"`
-	ModifiedAt string  `json:"modified_at,omitempty"`
-	CreatedBy  string  `json:"created_by,omitempty"`
-	ModifiedBy string  `json:"modified_by,omitempty"`
+	ID          string  `json:"id"`
+	Type        string  `json:"type"`
+	Content     string  `json:"content,omitempty"`
+	Title       string  `json:"title,omitempty"`
+	Description string  `json:"description,omitempty"`
+	DueDate     string  `json:"due_date,omitempty"`
+	Assignee    string  `json:"assignee,omitempty"`
+	X           float64 `json:"x"`
+	Y           float64 `json:"y"`
+	Width       float64 `json:"width,omitempty"`
+	Height      float64 `json:"height,omitempty"`
+	Color       string  `json:"color,omitempty"`
+	Shape       string  `json:"shape,omitempty"`
+	ParentID    string  `json:"parent_id,omitempty"`
+	CreatedAt   string  `json:"created_at,omitempty"`
+	ModifiedAt  string  `json:"modified_at,omitempty"`
+	CreatedBy   string  `json:"created_by,omitempty"`
+	ModifiedBy  string  `json:"modified_by,omitempty"`
 }
 
 // =============================================================================
@@ -505,7 +508,7 @@ type DeleteItemResult struct {
 type SearchBoardArgs struct {
 	BoardID string `json:"board_id" jsonschema:"Board ID to search"`
 	Query   string `json:"query" jsonschema:"Text to search for in item content"`
-	Type    string `json:"type,omitempty" jsonschema:"Filter by item type: sticky_note, shape, text, frame"`
+	Type    string `json:"type,omitempty" jsonschema:"Filter by item type: sticky_note, shape, text, frame, card, app_card, connector, image, document, embed"`
 	Limit   int    `json:"limit,omitempty" jsonschema:"Max results (default 20, max 50)"`
 }
 
