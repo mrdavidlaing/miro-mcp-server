@@ -1,6 +1,7 @@
 # Binary
 miro-mcp-server
 miro-mcp-server.exe
+miro-mcp-server-*
 
 # Build artifacts
 dist/
