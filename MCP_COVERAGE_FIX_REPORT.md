@@ -28,7 +28,7 @@ If the **MCP client** sends `fields` (or `items`) as a **JSON string** (the lite
 
 ## P4 — Connectors unmarshal
 
-**Change:** `ConnectorEndpoint.position` now uses `ConnectorPoint` with custom JSON decoding so `x` / `y` can be numbers or strings.
+**Change:** `ConnectorEndpoint.position` uses `ConnectorPoint` with custom JSON decoding so `x` / `y` can be numbers, numeric strings, or **percentage strings** (e.g. `50%` for a relative anchor on an item edge). Percentages are normalized to fractional `0..1` in `X`/`Y`, and the original token is kept in `RawX`/`RawY` (`x_raw`/`y_raw` in JSON).
 
 ---
 

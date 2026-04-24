@@ -45,3 +45,29 @@ func TestConnector_NumericPositionUnchanged(t *testing.T) {
 		t.Errorf("got %g %g", c.StartItem.Position.X, c.StartItem.Position.Y)
 	}
 }
+
+func TestConnector_PercentageAnchorStrings(t *testing.T) {
+	const payload = `{
+		"id": "c3",
+		"type": "connector",
+		"startItem": {
+			"item": "a1",
+			"position": { "x": "50%", "y": "100%", "origin": "center" }
+		},
+		"endItem": { "item": "b1" }
+	}`
+	var c Connector
+	if err := json.Unmarshal([]byte(payload), &c); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	pos := c.StartItem.Position
+	if pos == nil {
+		t.Fatal("missing position")
+	}
+	if pos.X != 0.5 || pos.Y != 1.0 {
+		t.Errorf("X,Y = %g,%g want 0.5,1.0 (fractions)", pos.X, pos.Y)
+	}
+	if pos.RawX != "50%" || pos.RawY != "100%" {
+		t.Errorf("RawX=%q RawY=%q", pos.RawX, pos.RawY)
+	}
+}
