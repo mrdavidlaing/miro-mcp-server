@@ -120,6 +120,10 @@ func main() {
 		ServiceVersion: ServerVersion,
 	}))
 
+	// Some MCP clients stringify nested JSON (arrays of objects) as strings; the go-sdk
+	// then fails jsonschema validation. Unwrap after OTel, immediately before the handler.
+	server.AddReceivingMiddleware(tools.UnwrapStringifiedToolArgumentsMiddleware)
+
 	// Initialize desire path logger for agent behavior normalization
 	dpConfig := desirepath.LoadConfigFromEnv()
 	dpLogger := desirepath.NewLogger(dpConfig, logger)
