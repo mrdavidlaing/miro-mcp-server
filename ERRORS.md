@@ -347,6 +347,26 @@ Wait 30 seconds or until service recovers.
 
 ---
 
+## MCP client compatibility (tool arguments)
+
+### Nested JSON passed as strings
+
+Some MCP clients serialize array or object tool parameters (e.g. `fields` on `miro_create_app_card`, or `items` on `miro_bulk_create`) as a **JSON string** instead of a native JSON array. The Go MCP SDK validates `tools/call` arguments against the tool input schema **after** unmarshaling the top level into `map[string]any`, so a string value fails validation for properties that must be arrays (`invalid params: ... has type "string", want ... "array"`).
+
+The server includes a receiving middleware that detects string values for the `fields` and `items` parameters and parses them when they look like JSON arrays or objects. If you still see this error, the client is likely double-encoding parameters; fix the client or send proper JSON types.
+
+**Workaround without a server update:** ensure the client passes `fields` and `items` as real JSON arrays/objects, not strings.
+
+---
+
+## Miro REST API vs. card UI (status pills, assignee, tags)
+
+The public REST API exposes **card** item `data` fields such as `title`, `description`, and `dueDate`, and an `assignee` object when set. Native “status pill” values from the Miro UI are not always exposed as a separate field in the REST payload; what you see on `miro_get_item` depends on what Miro returns for that board and item type.
+
+**Tags** are a first-class REST resource in this MCP server (`miro_create_tag`, `miro_attach_tag`, `miro_get_item_tags`, etc.) and are the reliable cross-client way to label cards for agents when REST does not return a dedicated status field.
+
+---
+
 ## Getting Help
 
 1. **Check this guide** for common issues
