@@ -134,9 +134,9 @@ type TextItem struct {
 
 // ConnectorEndpoint defines one end of a connector.
 type ConnectorEndpoint struct {
-	ItemID   string    `json:"item,omitempty"`     // ID of connected item
-	Position *Position `json:"position,omitempty"` // Position if not connected to item
-	SnapTo   string    `json:"snapTo,omitempty"`   // "auto", "top", "right", "bottom", "left"
+	ItemID   string            `json:"item,omitempty"`     // ID of connected item
+	Position *ConnectorPoint   `json:"position,omitempty"` // Position if not connected to item
+	SnapTo   string            `json:"snapTo,omitempty"`   // "auto", "top", "right", "bottom", "left"
 }
 
 // ConnectorStyle defines connector appearance.

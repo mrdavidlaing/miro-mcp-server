@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- MCP `tools/call`: unwrap stringified JSON for `fields` (app cards) and `items` (bulk create) so jsonschema validation accepts client payloads that encode nested objects as strings
+- `miro_get_item`: expose `description`, `due_date`, and `assignee` for cards when the Miro API returns them; document list/search behavior for cards
+- `miro_search_board`: match `title` and `description` (not only sticky `content`); walk paginated `/items` (up to 20 pages) so matches are not limited to the first page
+- Connectors: decode `startItem`/`endItem` `position.x` / `y` as numbers or strings (Miro API inconsistency)
+
 ## [1.16.2] - 2026-04-05
 
 ### Changed
